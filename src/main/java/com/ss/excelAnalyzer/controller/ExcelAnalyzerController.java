@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Controller
 @Slf4j
 @RequestMapping
-public class TestControllerApi extends ControllerBase{
+public class ExcelAnalyzerController extends ControllerBase{
     private final String ROUTE_UPLOAD = ROUTE_BASE + "upload";
     private final String ROUTE_DOWNLOAD = ROUTE_BASE + "download/{fileId}";
     private final String ROUTE_STATUS = ROUTE_BASE + "status";
