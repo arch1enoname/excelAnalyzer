@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!--
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this template
+-->
+<html>
+    <head>
+        <title>Ошибка</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    </head>
+    <body>
+    <main class="g-main">
+        <h2 style="text-align: center;" class="c-create__title title">Ошибка при выполнении запроса</h2>
+        <div class="text-center text-error" th:if="${param.errorMessage} != null AND ${param.errorMessage[0]} != null">
+            Ошибка при обращении на страницу
+            <div th:text="${param.url[0]}" th:remove="tag"></div> возникла ошибка <br />
+            <div th:text="${param.errorMessage[0]}" th:remove="tag"></div> <br /><br />
+        </div>
+        <div class="text-center"><a class="e-link-border" href="/">Назад на главную страницу</a></div>
+
+    </main>
+
+    </body>
+</html>

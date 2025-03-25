@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "comments": "conf file for excel_analyzer server dev Arthur",
+  "apps": [
+    {
+      "version": "1.0",
+      "comments": "dev",
+      "name": "excel_analyzer_server",
+      "server_type": "dev",
+      "url_base": "http://localhost/",
+      "domain": "localhost",
+      "hikari_pool_max_size": 10,
+      "threadCount": 10,
+      "baseDirectory": "C:\\Users\\79053\\Desktop\\base"
+    }
+  ]
+}

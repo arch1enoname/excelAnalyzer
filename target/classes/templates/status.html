@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Status</title>
+</head>
+<body>
+<h1 th:text="${status}">Сообщение</h1>
+<form th:action="@{/download/{fileId}(fileId=${fileId})}" method="get">
+    <button type="submit">Скачать</button>
+</form>
+</body>
+</html>

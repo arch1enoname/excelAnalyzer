@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "comments": "conf file for TOPT server dev yourName",
+  "apps": [
+    {
+      "version": "1.0",
+      "comments": "dev",
+      "name": "topt_server",
+      "server_type": "dev",
+      "url_base": "http://localhost/",
+      "action_service_url_create": "https://action-service-ip/actions/api/rest/v1/action",
+      "action_service_url_close": "https://action-service-ip/actions/api/rest/v1/action-close",
+      "keycloak_openid_url": "https://balancer.estp.ru/sso/realms/topt-realm/protocol/openid-connect",
+      "keycloak_public_key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3ILP63Im1Mmt1J/e/5fZn31yf3UmqNiiEj41+0fN1x4vHxluT+WEmR5ZkaPJws1zd+xA9sKNB+MaC2dwx07mDNzdBsT+MhXS/K4zyA+chFbdHRNP9jADm5JaEG9rrl4rBdWDaaEqTyvqBo3gPVrTqwv1DXOnAd8h6V5qaVoE165llfk7y/nDH/2ovdAehI4dE6inNMDaDwdXMLZw54SuuFcmBhZlKpV1p4GwEn5W/Yg/Mok8KaH4mXIWyCpCpLbEFWU2oQR6z+op5Ca+abZGYeLn0+CkiSfy7CT62gGLKJqVu0TkyTtkCFtTleCM2xjeVBll6A7YeYdZ3KMLbGBz8QIDAQAB",
+      "keycloak_client_secret": "BCusfQPNQNpFElZ8styRceJqzjuw2Kzq",
+      "keycloak_client_url": "http://localhost/",
+      "domain": "localhost",
+      "attack_errors_size": 10,
+      "attack_errors_interval_sec": 5,
+      "attack_errors_sleep_interval_sec": 20,
+      "hikari_pool_max_size": 10
+    }
+  ]
+}
