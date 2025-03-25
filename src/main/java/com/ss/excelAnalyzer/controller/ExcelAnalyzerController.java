@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class ExcelAnalyzerController extends ControllerBase{
     private final String ROUTE_UPLOAD = ROUTE_BASE + "upload";
     private final String ROUTE_DOWNLOAD = ROUTE_BASE + "download/{fileId}";
     private final String ROUTE_STATUS = ROUTE_BASE + "status";
+    private final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
 
     @Autowired
     private AnalyzerService analyzerService;
@@ -32,7 +34,7 @@ public class ExcelAnalyzerController extends ControllerBase{
         return "upload";
     }
 
-    @GetMapping("/download/{fileId}")
+    @GetMapping(ROUTE_DOWNLOAD)
     public ResponseEntity<?> downloadExcel(HttpServletRequest request, @PathVariable String fileId){
         try {
             DownloadResponseDto downloadResponseDto = analyzerService.getByteArrayByFileId(fileId);
@@ -53,14 +55,16 @@ public class ExcelAnalyzerController extends ControllerBase{
     }
 
     @PostMapping(ROUTE_UPLOAD)
-    public String uploadExcel(Model model, @RequestParam("file") MultipartFile multipartFile){
+    public String uploadExcel(Model model, @RequestParam("file") MultipartFile multipartFile,
+                              ModelMap modelMap){
         try {
 
             String fileId = analyzerService.analyzeFile(multipartFile);
             model.addAttribute("fileId", fileId);
 
         } catch (ExceptInfoUser e) {
-            // Ошибка для пользователя
+            model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, e.getMessage());
+            return "upload";
         }
 
         return "upload";
