@@ -13,17 +13,17 @@ import java.util.HashMap;
  *
  * @author vlitenko
  */
-public class ConfJsAppFactoryTopt implements ConfJsAppFactory_I
+public class ConfJsAppFactoryExcelAnalyzer implements ConfJsAppFactory_I
 {
-    private static final ConfJsAppFactoryTopt instance = new ConfJsAppFactoryTopt();
+    private static final ConfJsAppFactoryExcelAnalyzer instance = new ConfJsAppFactoryExcelAnalyzer();
 
-    public static ConfJsAppFactoryTopt getInstance() {
+    public static ConfJsAppFactoryExcelAnalyzer getInstance() {
         return instance;
     }
     
     @Override
     public ConfJsApp newObj(HashMap<String, ConfJsDbFactory_I> factoriesDb) {
-        return new ConfJsAppTopt();
+        return new ConfJsAppExcelAnalyzer();
     }
     
 }

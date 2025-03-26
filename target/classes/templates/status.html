@@ -5,8 +5,12 @@
 </head>
 <body>
 <h1 th:text="${status}">Сообщение</h1>
-<form th:action="@{/download/{fileId}(fileId=${fileId})}" method="get">
-    <button type="submit">Скачать</button>
+<form th:action="@{/download/xlsx/{fileId}(fileId=${fileId})}" method="get">
+    <button type="submit">Скачать excel</button>
+</form>
+
+<form th:action="@{/view/html/{fileId}(fileId=${fileId})}" method="get">
+    <button type="submit">Html view</button>
 </form>
 </body>
 </html>

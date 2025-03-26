@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Таблица и PDF</title>
+    <meta charset="UTF-8"/>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 50%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<h1>Таблица данных</h1>
+<p th:text="${errorMessage}"></p>
+<table>
+    <thead>
+    <tr>
+        <th>ФИО</th>
+        <th>Дата рождения</th>
+        <th>Года</th>
+        <th>Месяца</th>
+        <th>Статус</th>
+        <th>Детали ошибки</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="data : ${dataList}">
+        <td th:text="${data.fio}"></td>
+        <td th:text="${data.birthDate}"></td>
+        <td th:text="${data.years}"></td>
+        <td th:text="${data.months}"></td>
+        <td th:text="${data.status}"></td>
+        <td th:text="${data.errorDetails}"></td>
+    </tr>
+    </tbody>
+</table>
+
+<form th:action="@{/download/pdf/{fileId}(fileId=${fileId})}" method="get">
+    <button type="submit">Скачать pdf</button>
+</form>
+</body>
+</html>

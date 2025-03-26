@@ -4,7 +4,6 @@
  */
 package com.ss.excelAnalyzer.conf.js;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.ss.config.js.ExceptConf;
@@ -16,7 +15,7 @@ import com.ss.config.js.ConfJsDb;
  * @author vlitenko
  */
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ConfJsAppTopt extends ConfJsApp {
+public class ConfJsAppExcelAnalyzer extends ConfJsApp {
 
     private String nameServer;
     private String urlBase;
@@ -33,11 +32,11 @@ public class ConfJsAppTopt extends ConfJsApp {
     public static final String SERVER_TYPE_PREPROD = "preprod";
     public static final String SERVER_TYPE_PROD = "prod";
 
-    public ConfJsAppTopt() {
+    public ConfJsAppExcelAnalyzer() {
         super(ConfJsDb.knownDb);
     }
 
-    public ConfJsAppTopt(ConfJsApp p_kCopy) {
+    public ConfJsAppExcelAnalyzer(ConfJsApp p_kCopy) {
         super(p_kCopy);
     }
 

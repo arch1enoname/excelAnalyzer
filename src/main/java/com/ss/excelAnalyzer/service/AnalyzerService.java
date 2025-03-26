@@ -1,27 +1,25 @@
 package com.ss.excelAnalyzer.service;
 
+import com.itextpdf.html2pdf.ConverterProperties;
+import com.itextpdf.html2pdf.HtmlConverter;
+import com.itextpdf.html2pdf.resolver.font.DefaultFontProvider;
+import com.itextpdf.kernel.pdf.PdfWriter;
 import com.ss.Except4Support;
 import com.ss.ExceptInfoUser;
 import com.ss.excelAnalyzer.Msg;
-import com.ss.excelAnalyzer.conf.js.ConfJsAppTopt;
-import com.ss.excelAnalyzer.conf.js.ConfJsTopt;
+import com.ss.excelAnalyzer.conf.js.ConfJsAppExcelAnalyzer;
+import com.ss.excelAnalyzer.conf.js.ConfJsExcelAnalyzer;
 import com.ss.excelAnalyzer.controller.api.DownloadResponseDto;
+import com.ss.excelAnalyzer.dtos.AnalyzedExcelRowDto;
 import com.ss.excelAnalyzer.enums.CellStatus;
 import com.ss.excelAnalyzer.enums.ThreadStatus;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import org.thymeleaf.TemplateEngine;
+import java.io.*;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.Period;
@@ -32,21 +30,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.ss.excelAnalyzer.Msg.CODE_FILE_NOT_EXIST;
-import static com.ss.excelAnalyzer.Msg.CODE_FILE_NOT_VALID;
-
 @Service
 @Slf4j
 public class AnalyzerService {
 
-    private final String ERR_CODE_001 = "ERR_CODE_001";
-    private final String ERR_CODE_002 = "ERR_CODE_002";
-    private final String ERR_CODE_003 = "ERR_CODE_003";
-    private final String ERR_CODE_004 = "ERR_CODE_004";
-    private final String ERR_CODE_005 = "ERR_CODE_005";
-    private final String ERR_CODE_006 = "ERR_CODE_006";
-
-    ConfJsAppTopt config = ConfJsTopt.getInstance().getApp();
+    ConfJsAppExcelAnalyzer config = ConfJsExcelAnalyzer.getInstance().getApp();
 
     private final String BASE_DIRECTORY = config.getBaseDirectory();
     private final int THREAD_COUNT = config.getThreadCount();
@@ -60,47 +48,96 @@ public class AnalyzerService {
     private final int ERROR_COLUMN = 5;
     private final String XLSX_FILE_TYPE = ".xlsx";
     private final String ANALYZED_MARKER = "-analyzed";
+    private final String EMPTY_STRING_VALUE = "";
 
     private final ConcurrentHashMap<String, String> taskStatus = new ConcurrentHashMap<>();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
+    private final TemplateEngine templateEngine;
+
     @Autowired
-    public AnalyzerService(Validator validator) {
+    public AnalyzerService(Validator validator, TemplateEngine templateEngine) {
         this.validator = validator;
+        this.templateEngine = templateEngine;
     }
 
-    public String analyzeFile(MultipartFile multipartFile) throws ExceptInfoUser {
+    public String analyzeFile(InputStream inputStream, String fileName) throws ExceptInfoUser, IOException {
+
         String fileId = UUID.randomUUID().toString();
-
-        if(validator.validateExtension(multipartFile)) {
-            throw new ExceptInfoUser(Msg.i().getMessage(CODE_FILE_NOT_VALID));
-        }
-
         try {
-            saveFile(multipartFile.getBytes(), fileId);
+            byte[] data = inputStream.readAllBytes();
+
+            if(validator.validateExtension(fileName)) {
+                throw new ExceptInfoUser(Msg.i().getMessage(Msg.CODE_FILE_NOT_VALID));
+            }
+
+            saveFile(data, fileId);
 
             // Передаем задачу в ExecutorService
             executorService.submit(() -> {
                 try {
-                    generateExcel(parseExcel(multipartFile), fileId);
+                    generateExcel(parseOriginalExcel(new ByteArrayInputStream(data)), fileId);
                 } catch (ExceptInfoUser e) {
-                    throw new Except4Support(ERR_CODE_005, "Ошибка в чтении файла. " + fileId);
+                    throw new Except4Support("ERR_CODE_001", "Ошибка в чтении файла. " + e);
                 }
             });
-
-            executorService.shutdown();
         } catch (IOException e) {
-            throw new Except4Support(ERR_CODE_001, "Could not get bytes from multipart file. " + multipartFile);
+            throw new Except4Support("ERR_CODE_002", "Ошибка в чтении файла. " + e);
         }
+
+        executorService.shutdown();
 
         return fileId;
     }
 
-    private List<List<String>> parseExcel(MultipartFile file) throws ExceptInfoUser {
+    public List<AnalyzedExcelRowDto> parseAnalyzedExcel(String fileId) throws ExceptInfoUser {
+
+        File file = new File(BASE_DIRECTORY + "\\" + fileId + ANALYZED_MARKER + XLSX_FILE_TYPE);
+        List<AnalyzedExcelRowDto> dataList = new ArrayList<>();
+        try{
+            byte[] data = Files.readAllBytes(file.toPath());
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+
+            try (Workbook workbook = new XSSFWorkbook(byteArrayInputStream)) {
+                Sheet sheet = workbook.getSheetAt(0);
+
+                for (Row row : sheet) {
+                    if (row.getRowNum() == 0) {
+                        continue; // Пропускаем заголовок
+                    }
+
+                    Cell fioCell = row.getCell(FIO_COLUMN);
+                    Cell dateCell = row.getCell(BIRTHDATE_COLUMN);
+                    Cell years = row.getCell(YEAR_COLUMN);
+                    Cell months = row.getCell(MONTH_COLUMN);
+                    Cell status = row.getCell(STATUS_COLUMN);
+                    Cell errorDetails = row.getCell(ERROR_COLUMN);
+
+                    dataList.add(AnalyzedExcelRowDto.builder()
+                            .fio(fioCell.getStringCellValue())
+                            .birthDate(dateCell.getStringCellValue())
+                            .years(years.getStringCellValue())
+                            .months(months.getStringCellValue())
+                            .status(status.getStringCellValue())
+                            .errorDetails(errorDetails.getStringCellValue())
+                            .build());
+                }
+
+            } catch (IOException e) {
+                throw new Except4Support("ERR_CODE_003", "Could not get input stream from multipart file. " + e);
+            }
+        } catch (IOException e) {
+            throw new Except4Support("ERR_CODE_004", "Ошибка в преобразовании файла в массив байтов", e);
+        }
+
+        return dataList;
+    }
+
+    public List<List<String>> parseOriginalExcel(ByteArrayInputStream inputStream) throws ExceptInfoUser {
 
         List<List<String>> dataList = new ArrayList<>();
 
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+        try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             Sheet sheet = workbook.getSheetAt(0);
 
             for (Row row : sheet) {
@@ -108,25 +145,24 @@ public class AnalyzerService {
                     continue; // Пропускаем заголовок
                 }
 
-                Cell fioCell = row.getCell(0);
-                Cell dateCell = row.getCell(1);
+                Cell fioCell = row.getCell(FIO_COLUMN);
+                Cell dateCell = row.getCell(BIRTHDATE_COLUMN);
 
-                if (fioCell != null && dateCell != null) {
-                    List<String> rowData = new ArrayList<>();
+                List<String> rowData = new ArrayList<>();
 
-                    String fio = fioCell.getStringCellValue();
-                    String date = dateCell.toString();
+                String fio = (fioCell != null) ? fioCell.getStringCellValue() : EMPTY_STRING_VALUE;
+                rowData.add(fio);
 
-                    rowData.add(fio);
-                    rowData.add(date);
+                String date = (dateCell != null) ? dateCell.toString() : EMPTY_STRING_VALUE;
+                rowData.add(date);
 
-                    dataList.add(rowData);
-                }
+                dataList.add(rowData);
             }
 
         } catch (IOException e) {
-            throw new Except4Support(ERR_CODE_002, "Could not get input stream from multipart file. " + file);
+            throw new Except4Support("ERR_CODE_005", "Could not get input stream from multipart file. " + e);
         }
+
         return dataList;
     }
 
@@ -134,7 +170,35 @@ public class AnalyzerService {
         try (FileOutputStream outputStream = new FileOutputStream(BASE_DIRECTORY+"/"+ fileName + XLSX_FILE_TYPE)) {
             outputStream.write(data);
         } catch (IOException e) {
-            throw new Except4Support(ERR_CODE_003, "Could not save file. " + fileName + " data: " + data.length);
+            throw new Except4Support("ERR_CODE_006", "Could not save file. " + fileName + " data: " + data.length);
+        }
+    }
+
+    public String htmlToPdf(String html) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try {
+
+            PdfWriter pdfWriter = new PdfWriter(byteArrayOutputStream);
+            DefaultFontProvider defaultFontProvider = new DefaultFontProvider(false, true, false);
+            ConverterProperties converterProperties = new ConverterProperties();
+
+            converterProperties.setFontProvider(defaultFontProvider);
+
+            HtmlConverter.convertToPdf(html, pdfWriter, converterProperties);
+
+            FileOutputStream fileOutputStream = new FileOutputStream("");
+            byteArrayOutputStream.writeTo(fileOutputStream);
+            byteArrayOutputStream.close();
+
+            byteArrayOutputStream.flush();
+            fileOutputStream.close();
+            return null;
+
+
+        } catch (FileNotFoundException e) {
+            throw new Except4Support("ERR_CODE_013", "Невозможно найти файл", e);
+        } catch (IOException e) {
+            throw new Except4Support("ERR_CODE_013", "Ошибка при получении массива байтов", e);
         }
     }
 
@@ -158,17 +222,18 @@ public class AnalyzerService {
             for (List<String> data : fileData) {
                 Row row = sheet.createRow(rowNum++);
                 createRow(data, row);
-
             }
+
             try(ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 workbook.write(out);
                 saveFile(out.toByteArray(), fileId + ANALYZED_MARKER);
             } catch (IOException e) {
-                throw new Except4Support(ERR_CODE_004, "Could write output byte array to workbook. ");
+                throw new Except4Support("ERR_CODE_008", "Could write output byte array to workbook. " + e);
             }
+
             taskStatus.put(fileId, ThreadStatus.COMPLETED.toString());
         } catch (IOException e) {
-            throw new Except4Support(ERR_CODE_004, "Can`t create new XSSFWorkbook. ");
+            throw new Except4Support("ERR_CODE_009", "Can`t create new XSSFWorkbook. " + e);
         }
     }
 
@@ -178,17 +243,16 @@ public class AnalyzerService {
         File file = new File(filePath);
 
         if (!file.exists()) {
-            throw new ExceptInfoUser(Msg.i().getMessage(CODE_FILE_NOT_EXIST));
+            throw new ExceptInfoUser(Msg.i().getMessage(Msg.CODE_FILE_NOT_EXIST));
         }
 
         try {
-
             return DownloadResponseDto.builder()
                     .data(Files.readAllBytes(file.toPath()))
                     .fileName(fileId + ANALYZED_MARKER + XLSX_FILE_TYPE)
                     .build();
         } catch (IOException e) {
-            throw new Except4Support(ERR_CODE_005, "Ошибка в чтении файла. " + fileId);
+            throw new Except4Support("ERR_CODE_010", "Ошибка в чтении файла. " + fileId);
         }
     }
 
@@ -204,14 +268,18 @@ public class AnalyzerService {
         row.createCell(BIRTHDATE_COLUMN).setCellValue(birthDate);
 
         if (!validator.validateFio(fio)) {
-            row.createCell(FIO_COLUMN).setCellValue("123");
-            errorDetails.append("Error in FIO. ФИО не должно быть пустым \n");
+            errorDetails.append("Error in fio. ФИО не должно быть пустым\n");
             valid = false;
         }
 
-        if (validator.validateBirthDate(birthDate)) {
-            row.createCell(YEAR_COLUMN).setCellValue(calculateAgeYears(birthDate));
-            row.createCell(MONTH_COLUMN).setCellValue(calculateAgeMonth(birthDate));
+        if (validator.validateParseBirthDate(birthDate)) {
+            setYearAndMonth(row, birthDate);
+            if (validator.validateBirthDateIsPast(birthDate)) {
+                setYearAndMonth(row, birthDate);
+            } else {
+                errorDetails.append("Error in birthDate. Дата рождения должна быть раньше нынешнего \n");
+                valid = false;
+            }
         } else {
             errorDetails.append("Error in birthDate. Неверный формат, дата рождения должна быть формата dd.mm.yyyy \n");
             valid = false;
@@ -219,10 +287,19 @@ public class AnalyzerService {
 
         if (valid) {
             row.createCell(STATUS_COLUMN).setCellValue(CellStatus.OK.toString());
+            row.createCell(ERROR_COLUMN).setCellValue(EMPTY_STRING_VALUE);
         } else  {
+            row.createCell(YEAR_COLUMN).setCellValue(EMPTY_STRING_VALUE);
+            row.createCell(MONTH_COLUMN).setCellValue(EMPTY_STRING_VALUE);
             row.createCell(STATUS_COLUMN).setCellValue(CellStatus.ERROR.toString());
             row.createCell(ERROR_COLUMN).setCellValue(errorDetails.toString());
         }
+
+    }
+
+    private void setYearAndMonth(Row row, String birthDate) {
+        row.createCell(YEAR_COLUMN).setCellValue(calculateAgeYears(birthDate)+"");
+        row.createCell(MONTH_COLUMN).setCellValue(calculateAgeMonth(birthDate)+"");
     }
 
     private int calculateAgeYears(String birthDate) {
@@ -234,7 +311,7 @@ public class AnalyzerService {
             LocalDate now = LocalDate.now();
             return Period.between(birth, now).getYears();
         } catch (DateTimeParseException e) {
-            throw new Except4Support(ERR_CODE_006, "Error in parse date. " + birthDate);
+            throw new Except4Support("ERR_CODE_011", "Error in parse date. " + birthDate);
         }
     }
 
@@ -243,18 +320,15 @@ public class AnalyzerService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
             LocalDate birth = LocalDate.parse(birthDate, formatter);
-
             LocalDate now = LocalDate.now();
+
             return Period.between(birth, now).getMonths();
         } catch (DateTimeParseException e) {
-            throw new Except4Support(ERR_CODE_006, "Error in parse date. " + birthDate);
+            throw new Except4Support("ERR_CODE_012", "Error in parse date. " + birthDate);
         }
     }
 
     public String getStatusByFileId(String fileId) {
         return taskStatus.get(fileId);
     }
-
-
-
 }

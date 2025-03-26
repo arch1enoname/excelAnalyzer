@@ -4,7 +4,7 @@
  */
 package com.ss.excelAnalyzer.controller;
 
-import com.ss.excelAnalyzer.conf.js.ConfJsTopt;
+import com.ss.excelAnalyzer.conf.js.ConfJsExcelAnalyzer;
 
 import com.ss.config.monitor.MonitorErrorsService;
 
@@ -38,7 +38,7 @@ public class ContrAdminApi extends Contr {
 
     @GetMapping(URL_CONFIG)
     public ResponseEntity<?> getConfig() {
-        return ResponseEntity.ok(ConfJsTopt.getInstance().getApp());
+        return ResponseEntity.ok(ConfJsExcelAnalyzer.getInstance().getApp());
     }
 
 
