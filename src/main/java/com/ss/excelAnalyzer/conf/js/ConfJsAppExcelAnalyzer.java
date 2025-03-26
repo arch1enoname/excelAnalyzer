@@ -22,6 +22,9 @@ public class ConfJsAppExcelAnalyzer extends ConfJsApp {
     private String serverType;
     private int hikariPoolMaxSize;
     private String domain;
+    private String fileDirectory;
+    private String fontsDirectory;
+    private String resourcesDirectory;
 
     private int threadCount;
     private String baseDirectory;
@@ -52,6 +55,9 @@ public class ConfJsAppExcelAnalyzer extends ConfJsApp {
             hikariPoolMaxSize = getIntRequired(p_xParser, "hikari_pool_max_size");
             baseDirectory =  getStringRequired(p_xParser, "baseDirectory");
             threadCount = getIntRequired(p_xParser, "threadCount");
+            fileDirectory = getStringRequired(p_xParser,"fileDirectory");
+            fontsDirectory = getStringRequired(p_xParser, "fontsDirectory");
+            resourcesDirectory = getStringRequired(p_xParser, "resourcesDirectory");
 
         } catch (RuntimeException ex) {
             throw new ExceptConf("ErrConfA1", "Can't process project configuration",
@@ -88,4 +94,15 @@ public class ConfJsAppExcelAnalyzer extends ConfJsApp {
         return baseDirectory;
     }
 
+    public String getResourcesDirectory() {
+        return resourcesDirectory;
+    }
+
+    public String getFontsDirectory() {
+        return fontsDirectory;
+    }
+
+    public String getFileDirectory() {
+        return fileDirectory;
+    }
 }

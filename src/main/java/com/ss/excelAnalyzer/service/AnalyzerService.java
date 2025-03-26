@@ -1,9 +1,5 @@
 package com.ss.excelAnalyzer.service;
 
-import com.itextpdf.html2pdf.ConverterProperties;
-import com.itextpdf.html2pdf.HtmlConverter;
-import com.itextpdf.html2pdf.resolver.font.DefaultFontProvider;
-import com.itextpdf.kernel.pdf.PdfWriter;
 import com.ss.Except4Support;
 import com.ss.ExceptInfoUser;
 import com.ss.excelAnalyzer.Msg;
@@ -14,18 +10,26 @@ import com.ss.excelAnalyzer.dtos.AnalyzedExcelRowDto;
 import com.ss.excelAnalyzer.enums.CellStatus;
 import com.ss.excelAnalyzer.enums.ThreadStatus;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,6 +42,8 @@ public class AnalyzerService {
 
     private final String BASE_DIRECTORY = config.getBaseDirectory();
     private final int THREAD_COUNT = config.getThreadCount();
+    private final String URL_BASE = config.getUrlBase();
+    private final String URL_VIEW_HTML = "view/html";
     private final Validator validator;
 
     private final int FIO_COLUMN = 0;
@@ -47,6 +53,7 @@ public class AnalyzerService {
     private final int STATUS_COLUMN = 4;
     private final int ERROR_COLUMN = 5;
     private final String XLSX_FILE_TYPE = ".xlsx";
+    private final String PDF_FILE_TYPE = ".pdf";
     private final String ANALYZED_MARKER = "-analyzed";
     private final String EMPTY_STRING_VALUE = "";
 
@@ -171,34 +178,6 @@ public class AnalyzerService {
             outputStream.write(data);
         } catch (IOException e) {
             throw new Except4Support("ERR_CODE_006", "Could not save file. " + fileName + " data: " + data.length);
-        }
-    }
-
-    public String htmlToPdf(String html) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try {
-
-            PdfWriter pdfWriter = new PdfWriter(byteArrayOutputStream);
-            DefaultFontProvider defaultFontProvider = new DefaultFontProvider(false, true, false);
-            ConverterProperties converterProperties = new ConverterProperties();
-
-            converterProperties.setFontProvider(defaultFontProvider);
-
-            HtmlConverter.convertToPdf(html, pdfWriter, converterProperties);
-
-            FileOutputStream fileOutputStream = new FileOutputStream("");
-            byteArrayOutputStream.writeTo(fileOutputStream);
-            byteArrayOutputStream.close();
-
-            byteArrayOutputStream.flush();
-            fileOutputStream.close();
-            return null;
-
-
-        } catch (FileNotFoundException e) {
-            throw new Except4Support("ERR_CODE_013", "Невозможно найти файл", e);
-        } catch (IOException e) {
-            throw new Except4Support("ERR_CODE_013", "Ошибка при получении массива байтов", e);
         }
     }
 
@@ -330,5 +309,25 @@ public class AnalyzerService {
 
     public String getStatusByFileId(String fileId) {
         return taskStatus.get(fileId);
+    }
+
+    public DownloadResponseDto generatePdf(String fileId) {
+
+        String url = URL_BASE + URL_VIEW_HTML + "/" + fileId;
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        try {
+
+            Document document = Jsoup.connect(url).get();
+            TgTrip2Pdf2.generatePdfFromString(document.html(), byteArrayOutputStream, url);
+
+            return DownloadResponseDto.builder()
+                    .fileName(fileId + PDF_FILE_TYPE)
+                    .data(byteArrayOutputStream.toByteArray())
+                    .build();
+        } catch (IOException e) {
+            throw new Except4Support("ERR_CODE_013", "Ошибка при парсинге страницы.", e);
+        }
+
     }
 }
